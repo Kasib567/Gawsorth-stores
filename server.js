@@ -207,6 +207,9 @@ app.get("/admin-login", (req, res) => {
 // Admin Login POST
 app.post("/admin-login", (req, res) => {
   const { password } = req.body;
+  console.log("Password entered:", password);
+  console.log("Admin hash from env:", ADMIN_PASSWORD_HASH);
+
   if (!password) return res.render("admin-login", { error: "Enter password" });
 
   bcrypt.compare(password, ADMIN_PASSWORD_HASH, (err, result) => {
@@ -214,6 +217,7 @@ app.post("/admin-login", (req, res) => {
       console.error("Bcrypt error:", err);
       return res.status(500).send("Server error");
     }
+    console.log("bcrypt.compare result:", result); // true or false
     if (result) {
       req.session.isAdmin = true;
       res.redirect("/admin");
