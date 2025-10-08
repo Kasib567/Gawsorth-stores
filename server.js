@@ -5,9 +5,9 @@ const sqlite3 = require("sqlite3").verbose();
 const path = require("path");
 const session = require("express-session");
 const bcrypt = require("bcrypt");
-app.set('trust proxy', 1); // trust first proxy
 
 const app = express();
+app.set('trust proxy', 1); // trust first proxy
 const PORT = process.env.PORT || 4000;
 
 // --- Admin password hash (generate once and store in .env) ---
