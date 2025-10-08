@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="wrapper">
+    <!-- Header -->
+    <header>
+      <h1>Admin Login</h1>
+      <nav>
+        <a href="/catalog">Catalog</a>
+        <a href="/">Home</a>
+      </nav>
+    </header>
+
+    <!-- Main content -->
+    <main class="login-container">
+      <div class="login-card">
+        <h2>Welcome Back</h2>
+        <% if (error) { %>
+          <p class="error"><%= error %></p>
+        <% } %>
+        <form action="/admin-login" method="POST">
+          <input type="password" name="password" placeholder="Enter password" required>
+          <button type="submit" class="btn-primary">Login</button>
+        </form>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+      <p>&copy; 2025 Mr Gawsworth Stores</p>
+    </footer>
+  </div>
+</body>
+</html>

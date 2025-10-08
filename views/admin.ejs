@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="wrapper">
+    <header>
+      <h1>Admin Panel</h1>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/catalog">Catalog</a>
+        <a href="/search">Search</a>
+        <a href="/admin-logout">Logout</a>
+      </nav>
+    </header>
+
+    <main>
+      <h2>Add Product</h2>
+      <form action="/admin/add" method="POST" enctype="multipart/form-data" class="admin-form">
+        <input type="text" name="name" placeholder="Product Name" required>
+        <input type="number" step="0.01" name="price" placeholder="Price (£)" required>
+        <input type="number" name="stock" placeholder="Stock" required>
+
+        <label>Category (e.g. electronics, sports, drinks):</label>
+        <input type="text" name="category" placeholder="Enter category or tag" required>
+
+        <label>
+          <input type="checkbox" name="featured" value="1">
+          Mark as Featured
+        </label>
+
+        <label>Upload Image:</label>
+        <input type="file" name="imageFile" accept="image/*" onchange="previewFile(event)">
+
+        <label>Or Image URL:</label>
+        <input type="text" name="imageUrl" placeholder="Or enter image URL" oninput="previewUrl(event)">  
+
+        <!-- Live preview -->
+        <img id="imagePreview" class="preview" src="/placeholder.png" alt="Preview">
+
+        <button type="submit" class="btn-primary">Add Product</button>
+      </form>
+
+      <h2>Existing Products</h2>
+      <% if (products.length === 0) { %>
+        <p>No products yet.</p>
+      <% } else { %>
+        <div class="products">
+            <% products.forEach(product => { %>
+              <div class="product-card">
+                <% if (product.image) { %>
+                  <img src="<%= product.image %>" class="preview" alt="<%= product.name %>">
+                <% } else { %>
+                  <img src="/placeholder.png" alt="No image available">
+                <% } %>
+
+                <h3>
+                  <%= product.name %>
+                  <% if (product.featured) { %>
+                  <span class="featured-badge">⭐ Featured</span>
+                  <% } %>
+                </h3>
+                
+                <p>£<%= product.price.toFixed(2) %></p>
+                <p class="<%= product.stock > 0 ? 'in-stock' : 'out-of-stock' %>">
+                  <%= product.stock > 0 ? "In Stock" : "Out of Stock" %>
+                </p>
+
+                <!-- Toggle Stock Button -->
+                <form action="/admin/toggle-stock/<%= product.id %>" method="POST">
+                  <button type="submit" class="btn-primary">
+                    <%= product.stock > 0 ? "Mark Out of Stock" : "Mark In Stock" %>
+                  </button>
+                </form>
+
+                <form action="/admin/delete/<%= product.id %>" method="POST">
+                  <button type="submit" class="btn-danger">Delete</button>
+                </form>
+
+                <form action="/admin/toggle-featured/<%= product.id %>" method="POST">
+                  <button type="submit" class="btn-primary">
+                    <%= product.featured ? "Unmark Featured" : "Mark as Featured" %>
+                  </button>
+                </form>
+                
+              </div>
+            <% }) %>
+          </div>
+      <% } %>
+    </main>
+
+    <footer>
+      <p>&copy; 2025 Mr Gawsworth Stores</p>
+    </footer>
+  </div>
+
+  <script>
+    function previewFile(event) {
+      const file = event.target.files[0];
+      if (file) {
+        document.getElementById('imagePreview').src = URL.createObjectURL(file);
+      }
+    }
+
+    function previewUrl(event) {
+      const url = event.target.value;
+      if (url.startsWith('http')) {
+        document.getElementById('imagePreview').src = url;
+      }
+    }
+  </script>
+</body>
+</html>
+
+

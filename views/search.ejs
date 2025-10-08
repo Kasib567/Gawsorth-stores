@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search Products</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="wrapper">
+    <header>
+      <h1>Search Products</h1>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/catalog">Catalog</a>
+        <a href="/search">Search</a>
+      </nav>
+    </header>
+
+    <main>
+      <form action="/search" method="GET">
+        <input type="text" name="query" placeholder="Enter product name..." value="<%= query || '' %>" required>
+
+        <!-- Category filter -->
+        <select name="category">
+          <option value="">All Categories</option>
+          <% categories.forEach(cat => { %>
+            <option value="<%= cat.category %>" <%= category === cat.category ? "selected" : "" %>>
+              <%= cat.category.charAt(0).toUpperCase() + cat.category.slice(1) %>
+            </option>
+          <% }) %>
+        </select>
+
+
+        <button type="submit">Search</button>
+      </form>
+
+      <% if (products) { %>
+        <h2>Results:</h2>
+        <% if (products.length === 0) { %>
+          <p>No products found.</p>
+        <% } else { %>
+          <div class="products">
+            <% products.forEach(product => { %>
+              <div class="product-card">
+                <% if (product.image) { %>
+                  <img src="<%= product.image %>" alt="<%= product.name %>">
+                <% } else { %>
+                  <img src="/placeholder.png" alt="No image available">
+                <% } %>
+                <h3><%= product.name %></h3>
+                <p>£<%= product.price.toFixed(2) %></p>
+                <p class="<%= product.stock > 0 ? 'in-stock' : 'out-of-stock' %>">
+                  <%= product.stock > 0 ? "In Stock" : "Out of Stock" %>
+                </p>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      <% } %>
+    </main>
+
+    <footer>
+      <p>&copy; 2025 Gawsworth Stores</p>
+    </footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catalog</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="wrapper">
+    <header>
+      <h1>Catalog</h1>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/catalog">Catalog</a>
+        <a href="/search">Search</a>
+      </nav>
+    </header>
+
+<main>
+  <h2>Recently Added</h2>
+  <div class="products">
+    <% recentItems.forEach(product => { %>
+      <div class="product-card <%= product.featured ? 'featured' : '' %>">
+        <% 
+          let imageSrc = "/placeholder.png"; 
+          if (product.image && product.image.trim() !== "") {
+            const img = product.image.trim();
+            if (/^https?:\/\//i.test(img)) {
+              imageSrc = img;
+            } else {
+              imageSrc = '/uploads/' + img.replace(/^\/?uploads\//, '');
+            }
+          }
+        %>
+        <img src="<%= imageSrc %>" alt="<%= product.name %>">
+        <h3><%= product.name %></h3>
+        <p>£<%= product.price.toFixed(2) %></p>
+        <p class="<%= product.stock > 0 ? 'in-stock' : 'out-of-stock' %>">
+          <%= product.stock > 0 ? 'In Stock' : 'Out of Stock' %>
+        </p>
+      </div>
+    <% }) %>
+  </div>
+
+  <h2>Featured Items</h2>
+  <div class="products">
+    <% if (featuredItems.length === 0) { %>
+      <p>No featured items yet.</p>
+    <% } else { %>
+      <% featuredItems.forEach(product => { %>
+        <div class="product-card <%= product.featured ? 'featured' : '' %>">
+          <% let imageSrc = "/placeholder.png"; 
+             if (product.image && product.image.trim() !== "") {
+               const img = product.image.trim();
+               if (/^https?:\/\//i.test(img)) {
+                 imageSrc = img;
+               } else {
+                 imageSrc = '/uploads/' + img.replace(/^\/?uploads\//, '');
+               }
+             }
+          %>
+          <img src="<%= imageSrc %>" alt="<%= product.name %>">
+          <h3><%= product.name %></h3>
+          <p>£<%= product.price.toFixed(2) %></p>
+          <p class="<%= product.stock > 0 ? 'in-stock' : 'out-of-stock' %>">
+            <%= product.stock > 0 ? 'In Stock' : 'Out of Stock' %>
+          </p>
+        </div>
+      <% }) %>
+    <% } %>
+  </div>
+</main>
+
+    <footer>
+      <p>&copy; 2025 Gawsworth Stores</p>
+    </footer>
+  </div>
+</body>
+</html>
