@@ -405,7 +405,11 @@ footer {
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
-.store-photo {
-  margin: 1rem 0;
-  text-align: center;
+.store-photo img {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  border-radius: 10px;
+  display: block;
+  margin: 0 auto;
 }
