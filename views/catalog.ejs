@@ -35,7 +35,6 @@
         %>
         <img src="<%= imageSrc %>" alt="<%= product.name %>">
         <h3><%= product.name %></h3>
-        <p>£<%= product.price.toFixed(2) %></p>
         <p class="<%= product.stock > 0 ? 'in-stock' : 'out-of-stock' %>">
           <%= product.stock > 0 ? 'In Stock' : 'Out of Stock' %>
         </p>
@@ -62,7 +61,6 @@
           %>
           <img src="<%= imageSrc %>" alt="<%= product.name %>">
           <h3><%= product.name %></h3>
-          <p>£<%= product.price.toFixed(2) %></p>
           <p class="<%= product.stock > 0 ? 'in-stock' : 'out-of-stock' %>">
             <%= product.stock > 0 ? 'In Stock' : 'Out of Stock' %>
           </p>
