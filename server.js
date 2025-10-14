@@ -15,69 +15,34 @@ const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
 // Example hash: $2b$10$abcd... (generate with bcrypt)
 
 // --- Database Setup ---
-const db = new sqlite3.Database("./db/store.db", (err) => {
-  if (err) {
-    console.error("Database error:", err.message);
-  } else {
-    console.log("✅ Connected to database.");
+const { Pool } = require("pg");
 
-    // Ensure table exists
-    db.run(
-      `CREATE TABLE IF NOT EXISTS products (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        price REAL,
-        stock INTEGER,
-        image TEXT
-      )`,
-      (err) => {
-        if (err) {
-          console.error("Error creating products table:", err);
-        } else {
-          // Check if "category" column exists
-          db.all("PRAGMA table_info(products)", (err, columns) => {
-            if (err) {
-              console.error("Error checking columns:", err);
-              return;
-            }
-
-            const hasCategory = columns.some(col => col.name === "category");
-
-            if (!hasCategory) {
-              db.run("ALTER TABLE products ADD COLUMN category TEXT DEFAULT ''", (err) => {
-                if (err) {
-                  console.error("Error adding category column:", err);
-                } else {
-                  console.log("✅ Added 'category' column to products table.");
-                }
-              });
-            }
-          });
-
-          // After ensuring category exists, also ensure featured column
-          db.all("PRAGMA table_info(products)", (err, columns) => {
-            if (err) {
-              console.error("Error checking columns:", err);
-              return;
-            }
-
-            const hasFeatured = columns.some(col => col.name === "featured");
-
-            if (!hasFeatured) {
-              db.run("ALTER TABLE products ADD COLUMN featured INTEGER DEFAULT 0", (err) => {
-                if (err) {
-                  console.error("Error adding featured column:", err);
-                } else {
-                  console.log("✅ Added 'featured' column to products table.");
-                }
-              });
-            }
-          });
-        }
-      }
-    );
-  }
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false } // required for Render
 });
+
+pool.connect()
+  .then(async client => {
+    console.log("✅ Connected to PostgreSQL database.");
+    client.release();
+
+    // Create the products table (no price column)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS products (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        stock INTEGER DEFAULT 0,
+        image TEXT,
+        category TEXT DEFAULT '',
+        featured INTEGER DEFAULT 0
+      );
+    `);
+    console.log("✅ Ensured 'products' table exists.");
+  })
+  .catch(err => {
+    console.error("❌ Database connection error:", err);
+  });
 
 
 
@@ -135,24 +100,15 @@ app.get("/", (req, res) => {
 });
 
 // Catalog (public)
-app.get("/catalog", (req, res) => {
-  // Get recent items (limit 7)
-  db.all("SELECT * FROM products ORDER BY id DESC LIMIT 7", (err, recentItems) => {
-    if (err) {
-      console.error("DB error (recent):", err.message);
-      return res.status(500).send("Database error!");
-    }
-
-    // Get featured items
-    db.all("SELECT * FROM products WHERE featured = 1", (err2, featuredItems) => {
-      if (err2) {
-        console.error("DB error (featured):", err2.message);
-        return res.status(500).send("Database error!");
-      }
-
-      res.render("catalog", { recentItems, featuredItems });
-    });
-  });
+app.get("/catalog", async (req, res) => {
+  try {
+    const { rows: recentItems } = await pool.query("SELECT * FROM products ORDER BY id DESC LIMIT 7");
+    const { rows: featuredItems } = await pool.query("SELECT * FROM products WHERE featured = 1");
+    res.render("catalog", { recentItems, featuredItems });
+  } catch (err) {
+    console.error("DB error:", err.message);
+    res.status(500).send("Database error!");
+  }
 });
 
 // Contact page placeholder
@@ -160,42 +116,41 @@ app.get("/contact", (req, res) => {
   res.render("contact"); // create contact.ejs if needed
 });
 
-app.get("/search", (req, res) => {
-  const query = (req.query.query || "").trim().substring(0, 100);
-  const category = (req.query.category || "").trim();
+// Search Section
+app.get("/search", async (req, res) => {
+  try {
+    const query = (req.query.query || "").trim().substring(0, 100);
+    const category = (req.query.category || "").trim();
 
-  // Get all distinct categories for the dropdown
-  db.all(
-    "SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != ''",
-    (err, categories) => {
-      if (err) {
-        console.error("DB error (categories):", err);
-        return res.status(500).send("Database error!");
-      }
+    // Fetch all distinct categories for the dropdown
+    const { rows: categories } = await pool.query(
+      "SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != ''"
+    );
 
-      let sql = "SELECT * FROM products WHERE LOWER(name) LIKE LOWER(?)";
-      const params = [`%${query}%`];
+    // Build SQL query dynamically
+    let sql = "SELECT * FROM products WHERE LOWER(name) LIKE LOWER($1)";
+    const params = [`%${query}%`];
 
-      if (category) {
-        sql += " AND LOWER(category) = LOWER(?)";
-        params.push(category);
-      }
-
-      db.all(sql, params, (err, rows) => {
-        if (err) {
-          console.error("DB error (search):", err);
-          return res.status(500).send("Database error!");
-        }
-
-        res.render("search", { 
-          products: rows, 
-          query, 
-          category, 
-          categories 
-        });
-      });
+    if (category) {
+      sql += " AND LOWER(category) = LOWER($2)";
+      params.push(category);
     }
-  );
+
+    // Run search
+    const { rows: products } = await pool.query(sql, params);
+
+    // Render search results
+    res.render("search", {
+      products,
+      query,
+      category,
+      categories,
+    });
+
+  } catch (err) {
+    console.error("DB error (search):", err.message);
+    res.status(500).send("Database error!");
+  }
 });
 
 // --- Admin Routes ---
@@ -236,79 +191,91 @@ app.get("/admin", checkAdmin, (req, res) => {
   });
 });
 
-// Add Product 
-app.post("/admin/add", checkAdmin, upload.single("imageFile"), (req, res) => {
-  const { name, price, stock, imageUrl, category, featured } = req.body;
-  const cleanCategory = category ? category.trim() : "";
-  const isFeatured = featured === "1" ? 1 : 0;
+// Add Product
+app.post("/admin/add", checkAdmin, upload.single("imageFile"), async (req, res) => {
+  try {
+    const { name, stock, imageUrl, category, featured } = req.body;
+    const cleanCategory = category ? category.trim() : "";
+    const isFeatured = featured === "1" ? 1 : 0;
 
-  let imagePath = "";
-  if (req.file) imagePath = "/uploads/" + req.file.filename;
-  else if (imageUrl && imageUrl.trim() !== "") imagePath = imageUrl.trim();
+    let imagePath = "";
+    if (req.file) imagePath = "/uploads/" + req.file.filename;
+    else if (imageUrl && imageUrl.trim() !== "") imagePath = imageUrl.trim();
 
-  db.run(
-    "INSERT INTO products (name, price, stock, image, category, featured) VALUES (?, ?, ?, ?, ?, ?)",
-    [name, price, stock, imagePath, cleanCategory || "", isFeatured],
-    (err) => {
-      if (err) {
-        console.error("DB error on add:", err.message);
-        return res.status(500).send("Database error!");
-      }
-      res.redirect("/admin");
-    }
-  );
+    // Insert product into DB
+    await pool.query(
+      "INSERT INTO products (name, stock, image, category, featured) VALUES ($1, $2, $3, $4, $5)",
+      [name, stock, imagePath, cleanCategory || "", isFeatured]
+    );
+
+    res.redirect("/admin");
+  } catch (err) {
+    console.error("DB error on add:", err.message);
+    res.status(500).send("Database error!");
+  }
 });
 
 // Toggle Stock
-app.post("/admin/toggle-stock/:id", checkAdmin, (req, res) => {
+app.post("/admin/toggle-stock/:id", checkAdmin, async (req, res) => {
   const id = req.params.id;
 
-  db.get("SELECT stock FROM products WHERE id = ?", [id], (err, row) => {
-    if (err || !row) {
-      console.error("Error fetching product:", err?.message || "Not found");
-      return res.status(500).send("Database error!");
+  try {
+    // Get current stock
+    const result = await pool.query("SELECT stock FROM products WHERE id = $1", [id]);
+    if (result.rows.length === 0) {
+      console.error("Product not found for ID:", id);
+      return res.status(404).send("Product not found");
     }
 
-    const newStock = row.stock > 0 ? 0 : 10; // 0 if in stock, 10 (default) if out
-    db.run("UPDATE products SET stock = ? WHERE id = ?", [newStock, id], (err2) => {
-      if (err2) {
-        console.error("Error updating stock:", err2.message);
-        return res.status(500).send("Database error!");
-      }
-      res.redirect("/admin");
-    });
-  });
+    const currentStock = result.rows[0].stock;
+    const newStock = currentStock > 0 ? 0 : 10; // toggle 0 ↔ 10
+
+    // Update stock
+    await pool.query("UPDATE products SET stock = $1 WHERE id = $2", [newStock, id]);
+
+    res.redirect("/admin");
+  } catch (err) {
+    console.error("Error toggling stock:", err.message);
+    res.status(500).send("Database error!");
+  }
 });
 
-// Delete Product (protected)
-app.post("/admin/delete/:id", checkAdmin, (req, res) => {
+// Delete Product
+app.post("/admin/delete/:id", checkAdmin, async (req, res) => {
   const { id } = req.params;
-  db.run("DELETE FROM products WHERE id = ?", [id], (err) => {
-    if (err) return res.status(500).send("Database error!");
+
+  try {
+    await pool.query("DELETE FROM products WHERE id = $1", [id]);
     res.redirect("/admin");
-  });
+  } catch (err) {
+    console.error("Error deleting product:", err.message);
+    res.status(500).send("Database error!");
+  }
 });
 
 // Toggle Featured Selection
-app.post("/admin/toggle-featured/:id", checkAdmin, (req, res) => {
-  const id = req.params.id;
+app.post("/admin/toggle-featured/:id", checkAdmin, async (req, res) => {
+  const { id } = req.params;
 
-  db.get("SELECT featured FROM products WHERE id = ?", [id], (err, row) => {
-    if (err) {
-      console.error("DB error (toggle featured):", err.message);
-      return res.status(500).send("Database error!");
+  try {
+    // Get current featured status
+    const result = await pool.query("SELECT featured FROM products WHERE id = $1", [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).send("Product not found");
     }
 
-    const newStatus = row.featured ? 0 : 1;
+    const currentStatus = result.rows[0].featured;
+    const newStatus = currentStatus ? 0 : 1;
 
-    db.run("UPDATE products SET featured = ? WHERE id = ?", [newStatus, id], (err2) => {
-      if (err2) {
-        console.error("DB error (update featured):", err2.message);
-        return res.status(500).send("Database error!");
-      }
-      res.redirect("/admin");
-    });
-  });
+    // Update featured status
+    await pool.query("UPDATE products SET featured = $1 WHERE id = $2", [newStatus, id]);
+
+    res.redirect("/admin");
+  } catch (err) {
+    console.error("DB error (toggle featured):", err.message);
+    res.status(500).send("Database error!");
+  }
 });
 
 // Admin Logout
