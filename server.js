@@ -1,7 +1,6 @@
 require('dotenv').config(); // Load environment variables from .env
 const express = require("express");
 const bodyParser = require("body-parser");
-const sqlite3 = require("sqlite3").verbose();
 const path = require("path");
 const session = require("express-session");
 const bcrypt = require("bcrypt");
@@ -183,12 +182,15 @@ app.post("/admin-login", (req, res) => {
   });
 });
 
-// Admin Panel (protected)
-app.get("/admin", checkAdmin, (req, res) => {
-  db.all("SELECT * FROM products", [], (err, rows) => {
-    if (err) return res.status(500).send("Database error!");
-    res.render("admin", { products: rows });
-  });
+// Admin Panel
+app.get("/admin", checkAdmin, async (req, res) => {
+  try {
+    const { rows: products } = await pool.query("SELECT * FROM products");
+    res.render("admin", { products });
+  } catch (err) {
+    console.error("DB error (admin):", err.message);
+    res.status(500).send("Database error!");
+  }
 });
 
 // Add Product
