@@ -3,6 +3,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const path = require("path");
 const session = require("express-session");
+const multer = require("multer");
 const bcrypt = require("bcrypt");
 
 const app = express();
@@ -16,17 +17,25 @@ const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
 // --- Database Setup ---
 const { Pool } = require("pg");
 
+// for render
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false } // required for Render
-});
+}); 
 
-pool.connect()
-  .then(async client => {
+// For local testing
+/*const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false
+});*/
+
+async function init() {
+  try {
+    const client = await pool.connect();
     console.log("✅ Connected to PostgreSQL database.");
     client.release();
 
-    // Create the products table (no price column)
+    // Create the products table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS products (
         id SERIAL PRIMARY KEY,
@@ -38,14 +47,32 @@ pool.connect()
       );
     `);
     console.log("✅ Ensured 'products' table exists.");
-  })
-  .catch(err => {
+
+    // Create the events table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS events (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT,
+        date DATE NOT NULL,
+        image TEXT
+      );
+    `);
+    console.log("✅ Ensured 'events' table exists.");
+
+    // Start the server AFTER DB is ready
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running at http://localhost:${PORT}`);
+    });
+
+  } catch (err) {
     console.error("❌ Database connection error:", err);
-  });
+  }
+}
 
+// Call the async init function
+init();
 
-
-const multer = require("multer");
 
 // Set storage for uploaded images
 const storage = multer.diskStorage({
@@ -280,6 +307,62 @@ app.post("/admin/toggle-featured/:id", checkAdmin, async (req, res) => {
   }
 });
 
+
+// --- EVENTS SECTION ---
+
+// Public Events Page
+app.get("/events", async (req, res) => {
+  try {
+    const { rows: events } = await pool.query("SELECT * FROM events ORDER BY date DESC");
+    res.render("events", { events });
+  } catch (err) {
+    console.error("Error fetching events:", err.message);
+    res.status(500).send("Database error!");
+  }
+});
+
+// Admin - Add Event Page
+app.get("/admin/events", checkAdmin, async (req, res) => {
+  try {
+    const { rows: events } = await pool.query("SELECT * FROM events ORDER BY date DESC");
+    res.render("admin-events", { events });
+  } catch (err) {
+    console.error("Error loading admin events:", err.message);
+    res.status(500).send("Database error!");
+  }
+});
+
+// Admin - Add Event POST
+app.post("/admin/events/add", checkAdmin, upload.single("imageFile"), async (req, res) => {
+  try {
+    const { title, description, date } = req.body;
+    let imagePath = "";
+    if (req.file) imagePath = "/uploads/" + req.file.filename;
+
+    await pool.query(
+      "INSERT INTO events (title, description, date, image) VALUES ($1, $2, $3, $4)",
+      [title, description, date, imagePath]
+    );
+
+    res.redirect("/admin/events");
+  } catch (err) {
+    console.error("Error adding event:", err.message);
+    res.status(500).send("Database error!");
+  }
+});
+
+// Admin - Delete Event
+app.post("/admin/events/delete/:id", checkAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query("DELETE FROM events WHERE id = $1", [id]);
+    res.redirect("/admin/events");
+  } catch (err) {
+    console.error("Error deleting event:", err.message);
+    res.status(500).send("Database error!");
+  }
+});
+
 // Admin Logout
 app.get("/admin-logout", checkAdmin, (req, res) => {
   req.session.destroy(err => {
@@ -288,15 +371,21 @@ app.get("/admin-logout", checkAdmin, (req, res) => {
   });
 });
 
+// Privacy Policy
+app.get("/privacy", (req, res) => {
+  res.render("privacy");
+});
+
+// Terms of Use
+app.get("/terms", (req, res) => {
+  res.render("terms");
+});
+
 // --- Global Error Handler ---
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).send("Something went wrong!");
 });
 
-// --- Start Server ---
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
-});
 
 

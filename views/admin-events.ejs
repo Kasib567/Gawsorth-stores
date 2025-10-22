@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Events | Admin</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header>
+      <h1>Admin Panel</h1>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/catalog">Catalog</a>
+        <a href="/search">Search</a>
+        <a href="/events">Events</a>
+        <a href="/admin" >Admin</a>
+        <a href="/admin-logout">Logout</a>
+      </nav>
+    </header>
+
+  <main class="admin-events">
+    <section class="add-event-form">
+      <h2>Add New Event</h2>
+      <form action="/admin/events/add" method="POST" enctype="multipart/form-data">
+        <input type="text" name="title" placeholder="Event Title" required>
+        <textarea name="description" placeholder="Description" rows="3" required></textarea>
+        <input type="date" name="date" required>
+        <input type="file" name="imageFile" accept="image/*">
+        <button type="submit">Add Event</button>
+      </form>
+    </section>
+
+    <section class="existing-events">
+      <h2>Existing Events</h2>
+      <% if (events.length === 0) { %>
+        <p>No events yet.</p>
+      <% } else { %>
+        <ul>
+          <% events.forEach(event => { %>
+            <li>
+              <strong><%= event.title %></strong> - 
+              <%= new Date(event.date).toLocaleDateString("en-GB") %>
+              <form action="/admin/events/delete/<%= event.id %>" method="POST" style="display:inline;">
+                <button type="submit" class="delete-btn">Delete</button>
+              </form>
+            </li>
+          <% }) %>
+        </ul>
+      <% } %>
+    </section>
+  </main>
+</body>
+</html>

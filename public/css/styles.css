@@ -413,3 +413,141 @@ footer {
   display: block;
   margin: 0 auto;
 }
+
+/* --- Policy & Terms Pages --- */
+.policy-container {
+  max-width: 800px;
+  margin: 80px auto;
+  padding: 40px;
+  background-color: #f8f8f8;
+  color: #222;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.05);
+  font-family: "Poppins", sans-serif;
+  line-height: 1.6;
+}
+
+.policy-container h1 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  color: #111;
+  border-bottom: 2px solid #ddd;
+  padding-bottom: 0.5rem;
+}
+
+.policy-container h2 {
+  font-size: 1.3rem;
+  margin-top: 1.5rem;
+  color: #333;
+}
+
+.policy-container p {
+  margin-bottom: 1rem;
+}
+
+.policy-container a {
+  color: #0077cc;
+  text-decoration: none;
+}
+
+.policy-container a:hover {
+  text-decoration: underline;
+}
+
+/* --- Cookies --- */
+.cookie-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  max-width: 600px;
+  margin: 0 auto;
+  background: #222;
+  color: #fff;
+  font-size: 0.9rem;
+  padding: 16px 20px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  display: none;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 9999;
+}
+
+.cookie-banner p {
+  margin: 0;
+  flex: 1;
+  line-height: 1.4;
+}
+
+.cookie-banner a {
+  color: #4cc9f0;
+  text-decoration: underline;
+}
+
+.cookie-banner button {
+  background: #4cc9f0;
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-left: 10px;
+}
+
+.cookie-banner button:hover {
+  background: #3a9ec7;
+}
+
+/* --- EVENTS PAGE --- */
+.events-page {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 1rem;
+}
+
+.event-card {
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  background: #fff;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.event-card img {
+  width: 100%;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+}
+
+.event-date {
+  font-weight: bold;
+  color: #444;
+}
+
+.admin-events form input,
+.admin-events form textarea {
+  width: 100%;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+}
+
+.admin-events form button {
+  padding: 0.5rem 1rem;
+  background: #333;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.delete-btn {
+  background: #b30000;
+  color: white;
+  border: none;
+  padding: 0.3rem 0.6rem;
+  border-radius: 5px;
+  cursor: pointer;
+}

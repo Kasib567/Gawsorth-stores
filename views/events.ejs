@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Events | Gawsworth Stores</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header>
+      <h1>Gawsworth Stores</h1>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/catalog">Catalog</a>
+        <a href="/search">Search</a>
+        <a href="/events">Events</a>
+      </nav>
+    </header>
+
+  <main class="events-page">
+    <% if (events.length === 0) { %>
+      <p>No events yet. Check back soon!</p>
+    <% } else { %>
+      <% events.forEach(event => { %>
+        <div class="event-card">
+          <% if (event.image) { %>
+            <img src="<%= event.image %>" alt="<%= event.title %>">
+          <% } %>
+          <h2><%= event.title %></h2>
+          <p class="event-date"><%= new Date(event.date).toLocaleDateString("en-GB") %></p>
+          <p><%= event.description %></p>
+        </div>
+      <% }) %>
+    <% } %>
+  </main>
+
+  <footer>
+    <p>&copy; <%= new Date().getFullYear() %> Gawsworth Stores</p>
+  </footer>
+</body>
+</html>
