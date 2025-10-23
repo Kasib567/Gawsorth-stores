@@ -18,16 +18,16 @@ const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
 const { Pool } = require("pg");
 
 // for render
-/*const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false } // required for Render
-}); */
-
-// For local testing
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false } // required for Render
+}); 
+
+// For local testing
+/*const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false
-});
+}); */
 
 async function init() {
   try {
