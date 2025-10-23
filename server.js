@@ -78,7 +78,7 @@ async function init() {
 init();
 
 // Cloudinary configuration
-cloudinarycf.config({
+cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
@@ -461,7 +461,9 @@ app.post("/admin/events/add", checkAdmin, upload.single("imageFile"), async (req
   try {
     const { title, description, date } = req.body;
     let imagePath = "";
-    if (req.file) imagePath = "/uploads/" + req.file.filename;
+    if (req.file && req.file.path) {
+      imagePath = req.file.path; // Cloudinary-hosted URL
+    }
 
     await pool.query(
       "INSERT INTO events (title, description, date, image) VALUES ($1, $2, $3, $4)",
