@@ -86,7 +86,7 @@ cloudinary.config({
 
 // Configure Cloudinary storage for Multer
 const storage = new CloudinaryStorage({
-  cloudinary: cloudinary.v2,
+  cloudinary: cloudinary,
   params: {
     folder: "gawsworth_stores", // Change this to your preferred folder name
     allowed_formats: ["jpg", "jpeg", "png", "webp"]
