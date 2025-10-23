@@ -6,6 +6,19 @@ const session = require("express-session");
 const multer = require("multer");
 const bcrypt = require("bcrypt");
 
+import { v2 as cloudinary } from "cloudinary";
+import cloudinary from "cloudinary";
+import multer from "multer";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+
+// Cloudinary config
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+
 const app = express();
 app.set('trust proxy', 1); // trust first proxy
 const PORT = process.env.PORT || 4000;
@@ -73,20 +86,24 @@ async function init() {
 // Call the async init function
 init();
 
+// Cloudinary configuration
+cloudinary.v2.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
-// Set storage for uploaded images
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "public/uploads/"); // folder to save
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1E9);
-    const ext = file.originalname.split('.').pop();
-    cb(null, file.fieldname + "-" + uniqueSuffix + "." + ext);
+// Configure Cloudinary storage for Multer
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary.v2,
+  params: {
+    folder: "gawsworth_stores", // Change this to your preferred folder name
+    allowed_formats: ["jpg", "jpeg", "png", "webp"]
   }
 });
 
-const upload = multer({ storage: storage });
+// Multer upload middleware using Cloudinary storage
+const upload = multer({ storage });
 
 // --- Middleware ---
 app.use(express.static(path.join(__dirname, "public")));
@@ -321,9 +338,13 @@ app.post("/admin/add", checkAdmin, upload.single("imageFile"), async (req, res) 
     const cleanCategory = category ? category.trim() : "";
     const isFeatured = featured === "1" ? 1 : 0;
 
+    // Use Cloudinary image if uploaded, or fallback to manual URL
     let imagePath = "";
-    if (req.file) imagePath = "/uploads/" + req.file.filename;
-    else if (imageUrl && imageUrl.trim() !== "") imagePath = imageUrl.trim();
+    if (req.file && req.file.path) {
+      imagePath = req.file.path; // Cloudinary-hosted image URL
+    } else if (imageUrl && imageUrl.trim() !== "") {
+      imagePath = imageUrl.trim();
+    }
 
     // Insert product into DB
     await pool.query(
@@ -363,12 +384,30 @@ app.post("/admin/toggle-stock/:id", checkAdmin, async (req, res) => {
   }
 });
 
-// Delete Product
+// Delete Product (with Cloudinary cleanup)
 app.post("/admin/delete/:id", checkAdmin, async (req, res) => {
   const { id } = req.params;
 
   try {
+    // Get image URL from DB
+    const { rows } = await pool.query("SELECT image FROM products WHERE id = $1", [id]);
+    const imageUrl = rows[0]?.image;
+
+    // Delete product from DB
     await pool.query("DELETE FROM products WHERE id = $1", [id]);
+
+    // If image is hosted on Cloudinary, delete it from Cloudinary
+    if (imageUrl && imageUrl.includes("res.cloudinary.com")) {
+      // Extract public_id from Cloudinary URL
+      const parts = imageUrl.split("/");
+      const publicIdWithExtension = parts.slice(-1)[0]; // e.g., 'image-12345.jpg'
+      const publicId = publicIdWithExtension.split(".")[0]; // remove extension
+
+      // Optional: include your folder path if you used one
+      await cloudinary.uploader.destroy(publicId);
+      console.log("🧹 Deleted Cloudinary image:", publicId);
+    }
+
     res.redirect("/admin");
   } catch (err) {
     console.error("Error deleting product:", err.message);
