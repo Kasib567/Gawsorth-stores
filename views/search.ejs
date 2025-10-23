@@ -12,7 +12,7 @@
       <h1>Search Products</h1>
       <nav>
         <a href="/">Home</a>
-        <a href="/catalog">Catalog</a>
+        <a href="/catalogue">Catalogue</a>
         <a href="/search">Search</a>
         <a href="/events">Events</a>
       </nav>
@@ -41,7 +41,7 @@
         <% if (products.length === 0) { %>
           <p>No products found.</p>
         <% } else { %>
-          <div class="products">
+          <div class="product-grid">
             <% products.forEach(product => { %>
               <div class="product-card">
                 <% if (product.image) { %>
@@ -58,10 +58,29 @@
           </div>
         <% } %>
       <% } %>
+
+      <% if (totalPages > 1) { %>
+  <div class="pagination">
+    <% if (page > 1) { %>
+      <a href="?query=<%= query %>&category=<%= category %>&page=<%= page - 1 %>" class="page-link">« Prev</a>
+    <% } %>
+
+    <% for (let i = 1; i <= totalPages; i++) { %>
+      <a href="?query=<%= query %>&category=<%= category %>&page=<%= i %>" class="page-link <%= i === page ? 'active' : '' %>">
+        <%= i %>
+      </a>
+    <% } %>
+
+    <% if (page < totalPages) { %>
+      <a href="?query=<%= query %>&category=<%= category %>&page=<%= page + 1 %>" class="page-link">Next »</a>
+    <% } %>
+  </div>
+<% } %>
+
     </main>
 
     <footer>
-      <p>&copy; 2025 Gawsworth Stores — Est. 1980
+        <p>&copy; <%= new Date().getFullYear() %> Gawsworth Stores - Est. 1980. All rights reserved.
       <a href="/privacy">Privacy Policy</a> | 
       <a href="/terms">Terms of Use</a>
       </p>

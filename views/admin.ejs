@@ -1,20 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Panel</title>
   <link rel="stylesheet" href="/css/styles.css">
 </head>
+
 <body>
   <div class="wrapper">
     <header>
       <h1>Admin Panel</h1>
       <nav>
         <a href="/">Home</a>
-        <a href="/catalog">Catalog</a>
+        <a href="/catalogue">Catalogue</a>
         <a href="/search">Search</a>
         <a href="/events">Events</a>
+        <a href="/admin-dashboard">Admin</a>
         <a href="/admin-logout">Logout</a>
       </nav>
     </header>
@@ -37,7 +40,7 @@
         <input type="file" name="imageFile" accept="image/*" onchange="previewFile(event)">
 
         <label>Or Image URL:</label>
-        <input type="text" name="imageUrl" placeholder="Or enter image URL" oninput="previewUrl(event)">  
+        <input type="text" name="imageUrl" placeholder="Or enter image URL" oninput="previewUrl(event)">
 
         <!-- Live preview -->
         <img id="imagePreview" class="preview" src="/placeholder.png" alt="Preview">
@@ -45,56 +48,102 @@
         <button type="submit" class="btn-primary">Add Product</button>
       </form>
 
+
+      <div class="admin-search-filter">
+        <form method="GET" action="/admin" class="search-form">
+          <input type="text" name="search" value="<%= search || '' %>" placeholder="Search products..."
+            class="search-input" />
+
+          <select name="category" class="category-select">
+            <option value="">All Categories</option>
+            <% categories.forEach(cat=> { %>
+              <option value="<%= cat.category %>" <%=category===cat.category ? 'selected' : '' %>>
+                <%= cat.category %>
+              </option>
+              <% }) %>
+          </select>
+
+          <button type="submit" class="search-button">Search</button>
+        </form>
+      </div>
+
       <h2>Existing Products</h2>
-      <% if (products.length === 0) { %>
+      <% if (products.length===0) { %>
         <p>No products yet.</p>
-      <% } else { %>
-        <div class="products">
-            <% products.forEach(product => { %>
+        <% } else { %>
+          <!-- Product Grid -->
+          <div class="product-grid">
+            <% products.forEach(product=> { %>
               <div class="product-card">
                 <% if (product.image) { %>
-                  <img src="<%= product.image %>" class="preview" alt="<%= product.name %>">
-                <% } else { %>
-                  <img src="/placeholder.png" alt="No image available">
+                  <img src="<%= product.image %>" alt="<%= product.name %>">
+                  <% } else { %>
+                    <img src="/placeholder.png" alt="No image available">
+                    <% } %>
+
+                      <h3>
+                        <%= product.name %>
+                          <% if (product.featured) { %>
+                            <span class="featured-badge">⭐ Featured</span>
+                            <% } %>
+                      </h3>
+
+                      <p class="<%= product.stock > 0 ? 'in-stock' : 'out-of-stock' %>">
+                        <%= product.stock> 0 ? "In Stock" : "Out of Stock" %>
+                      </p>
+
+                      <p class="category-label">
+                        <%= product.category || "No category" %>
+                      </p>
+
+                      <div class="admin-buttons">
+                        <form action="/admin/toggle-stock/<%= product.id %>" method="POST">
+                          <button type="submit" class="btn-primary">
+                            <%= product.stock> 0 ? "Mark Out of Stock" : "Mark In Stock" %>
+                          </button>
+                        </form>
+
+                        <form action="/admin/delete/<%= product.id %>" method="POST"
+                          onsubmit="return confirm('Delete this product?');">
+                          <button type="submit" class="btn-danger">Delete</button>
+                        </form>
+
+                        <form action="/admin/toggle-featured/<%= product.id %>" method="POST">
+                          <button type="submit" class="btn-secondary">
+                            <%= product.featured ? "Unmark Featured" : "Mark as Featured" %>
+                          </button>
+                        </form>
+                      </div>
+              </div>
+              <% }) %>
+          </div>
+
+          <!-- Pagination -->
+          <% if (totalPages> 1) { %>
+            <div class="pagination">
+              <% if (currentPage> 1) { %>
+                <a href="?search=<%= search %>&category=<%= category %>&page=<%= currentPage - 1 %>">&lt; Prev</a>
                 <% } %>
 
-                <h3>
-                  <%= product.name %>
-                  <% if (product.featured) { %>
-                  <span class="featured-badge">⭐ Featured</span>
-                  <% } %>
-                </h3>
-                
-                <p class="<%= product.stock > 0 ? 'in-stock' : 'out-of-stock' %>">
-                  <%= product.stock > 0 ? "In Stock" : "Out of Stock" %>
-                </p>
+                  <% for (let i=1; i <=totalPages; i++) { %>
+                    <a href="?search=<%= search %>&category=<%= category %>&page=<%= i %>"
+                      class="<%= i === currentPage ? 'active' : '' %>">
+                      <%= i %>
+                    </a>
+                    <% } %>
 
-                <!-- Toggle Stock Button -->
-                <form action="/admin/toggle-stock/<%= product.id %>" method="POST">
-                  <button type="submit" class="btn-primary">
-                    <%= product.stock > 0 ? "Mark Out of Stock" : "Mark In Stock" %>
-                  </button>
-                </form>
-
-                <form action="/admin/delete/<%= product.id %>" method="POST">
-                  <button type="submit" class="btn-danger">Delete</button>
-                </form>
-
-                <form action="/admin/toggle-featured/<%= product.id %>" method="POST">
-                  <button type="submit" class="btn-primary">
-                    <%= product.featured ? "Unmark Featured" : "Mark as Featured" %>
-                  </button>
-                </form>
-                
-              </div>
-            <% }) %>
-          </div>
-      <% } %>
+                      <% if (currentPage < totalPages) { %>
+                        <a href="?search=<%= search %>&category=<%= category %>&page=<%= currentPage + 1 %>">Next
+                          &gt;</a>
+                        <% } %>
+            </div>
+            <% } %>
+              <% } %>
     </main>
 
     <footer>
-      <p>&copy; 2025 Gawsworth Stores — Est. 1980
-      <a href="/privacy">Privacy Policy</a> | 
+      <p>&copy; <%= new Date().getFullYear() %> Gawsworth Stores - Est. 1980. All rights reserved.</p>
+      <a href="/privacy">Privacy Policy</a> |
       <a href="/terms">Terms of Use</a>
       </p>
     </footer>
@@ -116,6 +165,5 @@
     }
   </script>
 </body>
+
 </html>
-
-

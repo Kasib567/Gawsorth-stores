@@ -18,16 +18,16 @@ const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
 const { Pool } = require("pg");
 
 // for render
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false } // required for Render
-}); 
-
-// For local testing
 /*const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false } // required for Render
+}); */
+
+// For local testing
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false
-});*/
+});
 
 async function init() {
   try {
@@ -125,14 +125,40 @@ app.get("/", (req, res) => {
   res.render("index");
 });
 
-// Catalog (public)
-app.get("/catalog", async (req, res) => {
+// Catalogue (public) with Featured Pagination
+app.get("/catalogue", async (req, res) => {
   try {
-    const { rows: recentItems } = await pool.query("SELECT * FROM products ORDER BY id DESC LIMIT 7");
-    const { rows: featuredItems } = await pool.query("SELECT * FROM products WHERE featured = 1");
-    res.render("catalog", { recentItems, featuredItems });
+    // Pagination setup for featured products
+    const featuredPage = parseInt(req.query.featuredPage) || 1;
+    const featuredLimit = 20; // how many featured items per page
+    const featuredOffset = (featuredPage - 1) * featuredLimit;
+
+    // Get recent products (always latest 7)
+    const { rows: recentItems } = await pool.query(
+      "SELECT * FROM products ORDER BY id DESC LIMIT 7"
+    );
+
+    // Count total featured items
+    const { rows: featuredCountRows } = await pool.query(
+      "SELECT COUNT(*) AS count FROM products WHERE featured = 1"
+    );
+    const featuredCount = parseInt(featuredCountRows[0].count);
+    const totalFeaturedPages = Math.ceil(featuredCount / featuredLimit);
+
+    // Get paginated featured products
+    const { rows: featuredItems } = await pool.query(
+      "SELECT * FROM products WHERE featured = 1 ORDER BY id DESC LIMIT $1 OFFSET $2",
+      [featuredLimit, featuredOffset]
+    );
+
+    res.render("catalogue", {
+      recentItems,
+      featuredItems,
+      featuredPage,
+      totalFeaturedPages
+    });
   } catch (err) {
-    console.error("DB error:", err.message);
+    console.error("DB error (/catalogue):", err.message);
     res.status(500).send("Database error!");
   }
 });
@@ -142,35 +168,49 @@ app.get("/contact", (req, res) => {
   res.render("contact"); // create contact.ejs if needed
 });
 
-// Search Section
+// Search Section (with pagination)
 app.get("/search", async (req, res) => {
   try {
     const query = (req.query.query || "").trim().substring(0, 100);
     const category = (req.query.category || "").trim();
+    const page = parseInt(req.query.page) || 1;
+    const limit = 20; // show 20 products per page (4 across, 5 down)
+    const offset = (page - 1) * limit;
 
     // Fetch all distinct categories for the dropdown
-    const { rows: categories } = await pool.query(
-      "SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != ''"
-    );
+    const { rows: categories } = await pool.query(`
+      SELECT DISTINCT category 
+      FROM products 
+      WHERE category IS NOT NULL AND category != ''
+    `);
 
     // Build SQL query dynamically
     let sql = "SELECT * FROM products WHERE LOWER(name) LIKE LOWER($1)";
     const params = [`%${query}%`];
+    let countSql = "SELECT COUNT(*) FROM products WHERE LOWER(name) LIKE LOWER($1)";
 
     if (category) {
       sql += " AND LOWER(category) = LOWER($2)";
+      countSql += " AND LOWER(category) = LOWER($2)";
       params.push(category);
     }
 
-    // Run search
-    const { rows: products } = await pool.query(sql, params);
+    sql += " ORDER BY id DESC LIMIT $"+(params.length+1)+" OFFSET $"+(params.length+2);
+    const paginatedParams = [...params, limit, offset];
 
-    // Render search results
+    // Fetch products and total count
+    const { rows: products } = await pool.query(sql, paginatedParams);
+    const { rows: countResult } = await pool.query(countSql, params);
+    const totalProducts = parseInt(countResult[0].count);
+    const totalPages = Math.ceil(totalProducts / limit);
+
     res.render("search", {
       products,
       query,
       category,
       categories,
+      page,
+      totalPages
     });
 
   } catch (err) {
@@ -202,18 +242,72 @@ app.post("/admin-login", (req, res) => {
     console.log("bcrypt.compare result:", result); // true or false
     if (result) {
       req.session.isAdmin = true;
-      res.redirect("/admin");
+      res.redirect("/admin-dashboard");
     } else {
       res.render("admin-login", { error: "Incorrect password!" });
     }
   });
 });
 
-// Admin Panel
+// Admin Dashboard Page
+app.get("/admin-dashboard", checkAdmin, (req, res) => {
+  res.render("admin-dashboard");
+});
+
+// Admin Panel (with search, filter & pagination)
 app.get("/admin", checkAdmin, async (req, res) => {
   try {
-    const { rows: products } = await pool.query("SELECT * FROM products");
-    res.render("admin", { products });
+    const search = (req.query.search || "").trim().toLowerCase();
+    const category = (req.query.category || "").trim();
+    const page = parseInt(req.query.page) || 1;
+    const limit = 20; // 20 products per page (4 across, 5 down)
+    const offset = (page - 1) * limit;
+
+    // Build WHERE conditions dynamically
+    let conditions = [];
+    let params = [];
+
+    if (search) {
+      conditions.push(`LOWER(name) LIKE $${params.length + 1}`);
+      params.push(`%${search}%`);
+    }
+
+    if (category) {
+      conditions.push(`LOWER(category) = LOWER($${params.length + 1})`);
+      params.push(category);
+    }
+
+    // Combine conditions
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    // Count total matching products
+    const countQuery = `SELECT COUNT(*) AS count FROM products ${whereClause}`;
+    const countResult = await pool.query(countQuery, params);
+    const totalProducts = parseInt(countResult.rows[0].count);
+    const totalPages = Math.ceil(totalProducts / limit);
+
+    // Add pagination to params
+    const productQuery = `
+      SELECT * FROM products
+      ${whereClause}
+      ORDER BY id DESC
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+    `;
+    params.push(limit, offset);
+
+    const { rows: products } = await pool.query(productQuery, params);
+    const { rows: categories } = await pool.query(`
+      SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != '' ORDER BY category ASC
+    `);
+
+    res.render("admin", {
+      products,
+      categories,
+      search,
+      category,
+      currentPage: page,
+      totalPages
+    });
   } catch (err) {
     console.error("DB error (admin):", err.message);
     res.status(500).send("Database error!");
