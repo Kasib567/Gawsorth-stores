@@ -633,6 +633,22 @@ footer {
   margin-top: 1rem;
 }
 
+/* Mobile Portrait (2 columns) */
+@media (max-width: 600px) and (orientation: portrait) {
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+}
+
+/* Mobile Landscape (4 columns) */
+@media (max-width: 900px) and (orientation: landscape) {
+  .product-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+  }
+}
+
 
 /* --- Product Card --- */
 .product-card {
@@ -725,15 +741,4 @@ footer {
 
 .pagination a:hover {
   background: #62784F;
-}
-
-@media (max-width: 600px) {
-  .product-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  .product-card {
-    min-height: auto;
-  }
 }

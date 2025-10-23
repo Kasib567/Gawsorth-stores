@@ -376,32 +376,25 @@ app.post("/admin/toggle-stock/:id", checkAdmin, async (req, res) => {
 });
 
 // Delete Product (with Cloudinary cleanup)
-app.post("/admin/delete/:id", checkAdmin, async (req, res) => {
-  const { id } = req.params;
-
+app.post("/admin/events/delete/:id", checkAdmin, async (req, res) => {
   try {
-    // Get image URL from DB
-    const { rows } = await pool.query("SELECT image FROM products WHERE id = $1", [id]);
+    const { id } = req.params;
+    const { rows } = await pool.query("SELECT image FROM events WHERE id = $1", [id]);
     const imageUrl = rows[0]?.image;
 
-    // Delete product from DB
-    await pool.query("DELETE FROM products WHERE id = $1", [id]);
+    // Delete from DB
+    await pool.query("DELETE FROM events WHERE id = $1", [id]);
 
-    // If image is hosted on Cloudinary, delete it from Cloudinary
+    // Cloudinary cleanup
     if (imageUrl && imageUrl.includes("res.cloudinary.com")) {
-      // Extract public_id from Cloudinary URL
-      const parts = imageUrl.split("/");
-      const publicIdWithExtension = parts.slice(-1)[0]; // e.g., 'image-12345.jpg'
-      const publicId = publicIdWithExtension.split(".")[0]; // remove extension
-
-      // Optional: include your folder path if you used one
+      const filename = imageUrl.split("/").pop().split(".")[0];
+      const publicId = `gawsworth_stores/${filename}`;
       await cloudinary.uploader.destroy(publicId);
-      console.log("🧹 Deleted Cloudinary image:", publicId);
     }
 
-    res.redirect("/admin");
+    res.redirect("/admin/events");
   } catch (err) {
-    console.error("Error deleting product:", err.message);
+    console.error("Error deleting event:", err.message);
     res.status(500).send("Database error!");
   }
 });
